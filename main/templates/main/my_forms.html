@@ -1,0 +1,137 @@
+{% extends 'main/base.html' %}
+
+{% block subnavbar %}
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Form</a></li>
+            <li class="breadcrumb-item active" aria-current="page">My forms</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    <div class="w-75 mx-auto" id="wrapper">
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">Token</th>
+                <th scope="col">Link</th>
+                <th scope="col">Answers</th>
+                <th scope="col">Results</th>
+                <th scope="col"></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for form in request.user.form_set.all %}
+                <tr id="form-{{ form.id }}">
+                    <th scope="col">{{ forloop.counter }}</th>
+                    <td>{{ form.uuid }}</td>
+                    <td>
+                        <a target="_blank" rel="noopener noreferrer"
+                           href="http://{{ request.get_host }}/{{ form.uuid }}">
+                            https://{{ request.get_host }}/{{ form.uuid }}
+                        </a>
+                    </td>
+                    <td>
+                        {{ form.number_of_answers }}
+                    </td>
+                    <td>
+                        <a role="button" type="button" class="btn btn-primary btn-sm fas fa-eye text-white"
+                           style="margin-bottom:-20px;margin-top:-20px;font-size:19px;"
+                           href="{% url 'form_summary' uuid=form.uuid %}"
+                           data-toggle="tooltip" data-placement="right" title="View results"></a>
+                    </td>
+                    <td>
+                        <button type="button" class="close" aria-label="Close">
+                            <span aria-hidden="true" onclick="delete_form({{ form.id }})" data-toggle="tooltip"
+                                  data-placement="right" title="Delete form">&times;</span>
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% if request.user.form_set.all.count == 0 %}
+            <div class="text-center"><a href="{% url 'form_create' %}">Create a form</a></div>
+        {% endif %}
+        <br/>
+        <br/>
+        <br/>
+    </div>
+
+    <template id="error-message-template">
+        <div class="alert alert-danger m-4" role="alert" id="error-message">
+        </div>
+    </template>
+
+    <div class="modal fade" tabindex="-1" role="dialog" id="myModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Delete form</h3>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <b>Are you sure you want to delete this form ?</b><br/>
+                    <em>There won't be any way to recover it.</em>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="cancel-button">Cancel
+                    </button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal" onclick="modal_delete_form()">
+                        Delete form
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        let csrf_token = "{{ csrf_token }}";
+        let form_id = null;
+
+        function handle_error(event) {
+            const error_message_template = document.querySelector('#error-message-template');
+            if (document.querySelector('#error-message') === null) {
+                let error_message_clone = error_message_template.content.cloneNode(true);
+                error_message_clone.children[0].innerText = 'An error has occurred: ' + event.responseText;
+                document.querySelector('#wrapper').appendChild(
+                    error_message_clone
+                );
+            }
+        }
+
+        function delete_form(id) {
+            let error_message = document.querySelector('#error-message');
+            if (error_message) {
+                error_message.parentNode.removeChild(error_message);
+            }
+            form_id = id;
+
+            $('#myModal').modal();
+        }
+
+        function modal_delete_form() {
+            $.ajax({
+                url: '/forms/' + form_id,
+                method: 'DELETE',
+                headers: {"Content-Type": "application/json", "X-CSRFToken": csrf_token},
+                error: handle_error,
+                success: function () {
+                    let row = document.querySelector('tr[id=form-' + form_id + ']');
+                    row.parentNode.removeChild(row);
+                }
+            });
+        }
+
+        $('#myModal').on('shown.bs.modal', function () {
+            $('#cancel-button').trigger('focus')
+        })
+    </script>
+{% endblock %}

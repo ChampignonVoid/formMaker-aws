@@ -1,0 +1,38 @@
+{% extends 'main/base.html' %}
+
+{% block subnavbar %}
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    {% if message %}
+        <div class="alert alert-success">{{ message }}</div>
+    {% endif %}
+    <div class="jumbotron w-75 mx-auto text-center">
+        <div class="d-flex flex-row justify-content-center mx-5">
+            <div class="py-5 align-self-center" style="margin-right:80px;">
+                <h2>Create Online Forms<br/>Using Form Maker</h2>
+                <p>Spread it, Collect data</p>
+                <br/>
+                <br/>
+                <div class="text-center">
+                    {% if request.user.is_authenticated %}
+                        <a class="btn btn-primary btn-lg" href="{% url 'form_create' %}" role="button">Create a form</a>
+                    {% else %}
+                        <a class="btn btn-primary btn-lg" href="{% url 'register' %}" role="button">Create account</a>
+                        <br/>
+                        <br/>
+                        <a href="{% url 'login' %}">Login</a>
+                    {% endif %}
+                </div>
+            </div>
+            <i class="fas fa-file-alt align-self-center" style="font-size:400px"></i>
+        </div>
+        <hr class="my-4">
+        <p>We also provide a REST API than enables automation of the form creation process.</p>
+    </div>
+{% endblock %}

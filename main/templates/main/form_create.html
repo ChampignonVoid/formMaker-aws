@@ -1,0 +1,365 @@
+{% extends 'main/base.html' %}
+
+{% block subnavbar %}
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Form</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Create</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block content %}
+
+    <!-- templates -->
+    <template id="question-card-template">
+        <div class="card m-5" style="min-width:275px;">
+            <div class="card-header">
+                <button type="button" class="close ml-auto remove-question-button" data-toggle="tooltip"
+                        data-placement="right" title="Delete question">&times;
+                </button>
+            </div>
+            <div class="card-body">
+            </div>
+        </div>
+    </template>
+
+    <template id="question-template">
+        <input type="text" placeholder="Question" class="w-100 question-input"/>
+    </template>
+
+    <template id="answer-type-template">
+        <div class="input-group mt-2">
+            <label>
+                <select class="custom-select" id="inputGroupSelect01" data-toggle="tooltip" data-placement="right"
+                        title="Answer type" onchange="blur()">
+                    <option value="UNIQUE_ANSWER" selected>Single choice</option>
+                    <option value="MULTIPLE_ANSWER">Multiple choices</option>
+                    <option value="TEXT">Text</option>
+                    <option value="HTML">Html</option>
+                    <option value="FILE">File</option>
+                </select>
+            </label>
+        </div>
+    </template>
+
+    <template id="possible-answers-wrapper-template">
+        <div class="possible-answers">
+        </div>
+    </template>
+
+    <template id="add-possible-answer-button-template">
+        <div class="d-flex add-answer-button-wrapper">
+            <i class="fas fa-plus-circle close text-dark" data-toggle="tooltip" data-placement="left"
+               title="Add a possible answer" style="outline:0;cursor:pointer;"></i>
+        </div>
+    </template>
+
+    <template id="possible-answer-template">
+        <div class="my-1 d-flex">
+            <input type="text" placeholder="Possible answer" class="flex-fill possible-answer-input"/>
+            <button type="button" class="close ml-1" data-toggle="tooltip" data-placement="right"
+                    title="Delete possible answer">&times;
+            </button>
+        </div>
+    </template>
+
+    <template id="error-message-template">
+        <div class="alert alert-danger my-4" role="alert" id="error-message">
+        </div>
+    </template>
+
+    <template id="success-message-template">
+        <div class="alert alert-success text-center my-4" role="alert" id="success-message">
+        </div>
+    </template>
+
+    <!-- container -->
+    <div id="wrapper" class="w-75 mx-auto mt-5 max-width-9">
+        <div id="container">
+        </div>
+        <div class="d-flex px-4">
+            <i class="fas fa-plus-circle close text-dark" data-toggle="tooltip" data-placement="right"
+               title="Add a question" style="outline:0;cursor:pointer;font-size:40px;margin-top:-2rem"
+               onclick="add_question()"></i>
+        </div>
+        <input type="submit" class="btn btn-primary m-4" id="create-form-button" value="Create form"
+               onclick="send_form()">
+        <small class="form-text text-muted">Empty fields are ignored</small>
+    </div>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        /* global variables */
+        let id = 0;
+        let answer_id = 0;
+        let csrf_token = "{{ csrf_token }}";
+        let needed_ajax_calls = 0;
+
+        /* DOM manipulation functions */
+        function question_has_answers(id) {
+            return document.querySelector('#question-card-' + id + ' .possible-answers') !== null;
+        }
+
+        function create_possible_answer_wrapper_clone(id) {
+            const possible_answer_wrapper_template = document.querySelector('#possible-answers-wrapper-template');
+            let possible_answer_wrapper_clone = possible_answer_wrapper_template.content.cloneNode(true);
+            return possible_answer_wrapper_clone;
+        }
+
+        function question_add_answers(id) {
+            let possible_answer_wrapper_clone = create_possible_answer_wrapper_clone(id);
+            let question_card = document.querySelector('#question-card-' + id);
+            question_card.appendChild(possible_answer_wrapper_clone);
+        }
+
+        function question_show_answers(id) {
+            let possible_answers = document.querySelector('#question-card-' + id + ' .possible-answers');
+            if (possible_answers) {
+                possible_answers.style.display = '';
+            }
+            let add_button_node = document.querySelector('#question-card-' + id + ' .add-answer-button-wrapper i');
+            if (add_button_node) {
+                add_button_node.style.display = '';
+            }
+        }
+
+        function question_hide_answers(id) {
+            let node = document.querySelector('#question-card-' + id + ' .possible-answers');
+            node.style.display = 'None';
+            let add_button_node = document.querySelector('#question-card-' + id + ' .add-answer-button-wrapper i');
+            add_button_node.style.display = 'None';
+        }
+
+        function refresh_possible_answers_display(text, id) {
+            switch (text) {
+                case "Single choice":
+                case "Multiple choices":
+                    if (!question_has_answers(id)) {
+                        question_add_answers(id);
+                    } else {
+                        question_show_answers(id);
+                    }
+                    break;
+                default:
+                    if (question_has_answers(id)) {
+                        question_hide_answers(id);
+                    }
+                    break;
+            }
+        }
+
+        function add_possible_answer(id) {
+            const possible_answer_template = document.querySelector('#possible-answer-template');
+            let possible_answer_clone = possible_answer_template.content.cloneNode(true);
+            possible_answer_clone.children[0].setAttribute('id', 'answer-' + answer_id);
+            const current_answer_id = answer_id;
+            possible_answer_clone.querySelector('button').addEventListener('click', () => {
+                let answer = document.querySelector('#answer-' + current_answer_id);
+                $('[data-toggle="tooltip"]').tooltip('hide');
+                answer.parentNode.removeChild(answer);
+            });
+            answer_id = answer_id + 1;
+            document.querySelector('#question-card-' + id + ' .possible-answers')
+                .appendChild(possible_answer_clone);
+            document.activeElement.blur(); // blur 'add possible answer' button to remove tooltip
+            $('[data-toggle="tooltip"]').tooltip();
+        }
+
+        function create_question_card(id, first) {
+            const question_template = document.querySelector('#question-template');
+            let question_clone = question_template.content.cloneNode(true);
+
+            const answer_type_template = document.querySelector('#answer-type-template');
+            let answer_type_clone = answer_type_template.content.cloneNode(true);
+            answer_type_clone.children[0].querySelector('select').addEventListener('click', event => {
+                if (event.target.nodeName.toLowerCase() === 'option') {
+                    refresh_possible_answers_display(event.target.innerText, id);
+                }
+            });
+
+            const question_card_template = document.querySelector('#question-card-template');
+            let question_card_clone = question_card_template.content.cloneNode(true);
+            question_card_clone.children[0].setAttribute('id', 'question-card-' + id);
+            let remove_question_button = question_card_clone.querySelector('.remove-question-button');
+            remove_question_button.addEventListener('click', () => {
+                let node = document.querySelector('#question-card-' + id);
+                $('[data-toggle="tooltip"]').tooltip('hide');
+                node.parentNode.removeChild(node);
+            });
+
+            const add_possible_answer_button_template = document.querySelector('#add-possible-answer-button-template');
+            let add_possible_answer_button_clone = add_possible_answer_button_template.content.cloneNode(true);
+            add_possible_answer_button_clone.children[0].children[0].addEventListener(
+                'click',
+                () => add_possible_answer(id)
+            );
+
+            question_card_clone.children[0].children[1].appendChild(question_clone);
+            question_card_clone.children[0].children[1].appendChild(answer_type_clone);
+            question_card_clone.children[0].children[1].appendChild(add_possible_answer_button_clone);
+            question_card_clone.children[0].children[1].appendChild(create_possible_answer_wrapper_clone(id));
+            if (first) {
+                question_card_clone.querySelector('input').setAttribute('autofocus', 'true');
+            }
+            return question_card_clone;
+        }
+
+        function add_question(first) {
+            let question_card = create_question_card(id, first);
+            const saved_id = id;
+            id = id + 1;
+            document.querySelector("#container").appendChild(question_card);
+            $('[data-toggle="tooltip"]').tooltip();
+            return saved_id;
+        }
+
+        function handle_error(event) {
+            const error_message_template = document.querySelector('#error-message-template');
+            if (document.querySelector('#error-message') === null) {
+                let error_message_clone = error_message_template.content.cloneNode(true);
+                error_message_clone.children[0].innerText = 'An error has occurred: ' + event.responseText;
+                document.querySelector('#wrapper').appendChild(error_message_clone);
+            }
+            document.querySelector('#create-form-button').removeAttribute('disabled');
+        }
+
+        function remove_error_message() {
+            let error_message_node = document.querySelector('#error-message');
+            if (error_message_node !== null) {
+                error_message_node.parentNode.removeChild(error_message_node);
+            }
+        }
+
+        function remove_success_message() {
+            let success_message_node = document.querySelector('#success-message');
+            if (success_message_node !== null) {
+                success_message_node.parentNode.removeChild(success_message_node);
+            }
+        }
+
+        function count_needed_ajax_calls() {
+            const question_card_nodes = document.querySelectorAll('div[id^=question-card-]');
+            let count = 1; // the form make always one ajax call
+            question_card_nodes.forEach(function (question_card) {
+                const question_input_node = question_card.querySelectorAll('.question-input')[0];
+                if (question_input_node.value !== '') {
+                    count = count + 1;
+                    const possible_answer_inputs = question_card.querySelectorAll('.possible-answer-input');
+                    possible_answer_inputs.forEach(function (possible_answer_input_node) {
+                        if (possible_answer_input_node.value !== '') {
+                            count = count + 1;
+                        }
+                    });
+                }
+            });
+            needed_ajax_calls = count;
+        }
+
+        function end(form) {
+            if (needed_ajax_calls > 0) {
+                needed_ajax_calls = needed_ajax_calls - 1;
+            }
+            if (needed_ajax_calls === 0) {
+                const success_message_template = document.querySelector('#success-message-template');
+                let success_message_clone = success_message_template.content.cloneNode(true);
+                const url = location.protocol + '//' + location.hostname + (location.port ? ':' + location.port : '')
+                    + '/' + form.uuid;
+                success_message_clone.children[0].innerHTML = `Your form has been successfully created and is available at :`
+                    + ` <a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+                document.querySelector('#wrapper').appendChild(success_message_clone);
+                document.querySelector('#create-form-button').removeAttribute('disabled');
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+        }
+
+        /* Ajax REST API sending functions */
+        function send_form() {
+            document.querySelector('#create-form-button').setAttribute('disabled', 'true');
+            remove_error_message();
+            remove_success_message();
+            count_needed_ajax_calls();
+
+            $.ajax({
+                url: "/forms/",
+                method: 'POST',
+                data: '{}',
+                headers: {"Content-Type": "application/json", "X-CSRFToken": csrf_token},
+                error: handle_error,
+                success: function (form) {
+                    end(form);
+                    document.querySelectorAll('div[id^=question-card-]').forEach(function (question_card_node, index) {
+                        send_question(question_card_node, form, index);
+                    });
+                }
+            });
+        }
+
+        function send_question(question_card_node, form, number) {
+            const question_text = question_card_node.querySelector('input').value;
+            const question_select = question_card_node.querySelector('select');
+            const question_type = question_select.children[question_select.selectedIndex].value;
+
+            if (question_text === '') {
+                return;
+            }
+
+            $.ajax({
+                url: "/questions/",
+                method: 'POST',
+                data: JSON.stringify({
+                    type: question_type,
+                    text: question_text,
+                    form: form.id,
+                    number: number
+                }),
+                headers: {"Content-Type": "application/json", "X-CSRFToken": csrf_token},
+                error: handle_error,
+                success: function (question) {
+                    end(form);
+                    if (question_type === 'UNIQUE_ANSWER' || question_type === 'MULTIPLE_ANSWER') {
+                        question_card_node.querySelectorAll('div[id^=answer-]').forEach(function (answer_node, index) {
+                            send_answer(answer_node, question, form, index);
+                        });
+                    }
+                }
+            });
+        }
+
+        function send_answer(answer_node, question, form, number) {
+            const answer_text = answer_node.querySelector('input').value;
+
+            if (answer_text === '') {
+                return;
+            }
+
+            $.ajax({
+                url: '/possible_answers/',
+                method: 'POST',
+                data: JSON.stringify({
+                    text: answer_text,
+                    question: question.id,
+                    number: number
+                }),
+                headers: {"Content-Type": "application/json", "X-CSRFToken": csrf_token},
+                error: handle_error,
+                success: function () {
+                    end(form);
+                }
+            });
+        }
+
+        function blur() {
+            document.activeElement.blur();
+        }
+
+        const first_id = add_question(true);
+        add_possible_answer(first_id);
+        add_possible_answer(first_id);
+        add_possible_answer(first_id);
+        add_possible_answer(first_id);
+
+    </script>
+{% endblock %}

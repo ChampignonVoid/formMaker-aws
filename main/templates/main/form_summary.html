@@ -1,0 +1,151 @@
+{% extends 'main/form_base.html' %}
+{% load static %}
+
+{% block javascript %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.bundle.min.js"
+            integrity="sha256-xKeoJ50pzbUGkpQxDYHD7o7hxe0LaOGeguUidbq6vis=" crossorigin="anonymous"></script>
+
+    <script>
+        let colors = [
+            '#ff5634',
+            '#ffae35',
+            '#ffe14f',
+            '#cff24e',
+            '#52dd83',
+            '#49f4cf',
+            '#41d6f4',
+            '#4286f4',
+            '#7135e0',
+            '#a033e0',
+            '#e0288a',
+            '#eee',
+            '#ccc',
+            '#aaa',
+            '#999',
+            '#777',
+            '#555',
+            '#333',
+            '#111'
+        ];
+
+        {% for question in form.question_set.all %}
+            {% if question.type == 'UNIQUE_ANSWER' or question.type == 'MULTIPLE_ANSWER' %}
+                let ctx_{{ forloop.counter0 }} = document.getElementById('chart-{{ forloop.counter0 }}');
+                let chart_{{ forloop.counter0 }} = new Chart(ctx_{{ forloop.counter0 }}, {
+                    type: 'pie',
+                    data: {
+                        datasets: [{
+                            data: [{% for possible_answer in question.possibleanswer_set.all %}
+                                {{ possible_answer.answer_set.all.count }},
+                            {% endfor %}],
+                            backgroundColor: colors,
+                            borderWidth: 0
+                        }],
+
+                        labels: [{% for possible_answer in question.possibleanswer_set.all %}
+                            "{{ possible_answer.text }}",
+                        {% endfor %}]
+                    },
+                    options: {
+                        animation: {
+                            animateRotate: false,
+                            animateScale: false
+                        },
+                        responsive: false,
+                        maintainAspectRatio: false,
+                        cutoutPercentage: 70
+                    }
+                });
+                chart_{{ forloop.counter0 }}.canvas.parentNode.style.height = '300px';
+                chart_{{ forloop.counter0 }}.canvas.parentNode.style.width = '300px';
+                chart_{{ forloop.counter0 }}.resize();
+            {% endif %}
+        {% endfor %}
+    </script>
+{% endblock %}
+
+{% block content %}
+    <div class="m-3 p-3">
+        <ul class="list-group card">
+            <div class="card-header">Form</div>
+            <li class="list-group-item border-0"><b>Token:</b> {{ form.uuid }}</li>
+            <li class="list-group-item border-left-0 border-right-0 border-bottom-0">
+                <b>Author:</b> {{ form.creator.username }}</li>
+        </ul>
+        <div class="card my-4">
+            <div class="card-header">Charts</div>
+            <div class="card-body">
+                {% for question in form.question_set.all %}
+                    {% if question.type == 'UNIQUE_ANSWER' or question.type == 'MULTIPLE_ANSWER' %}
+                        <div class="float-left text-center">
+                            <p class="font-weight-bold">{{ question.text }}</p>
+                            <div style="width:260px;height:260px;" class="mb-4">
+                                <canvas id="chart-{{ forloop.counter0 }}"></canvas>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <div class="card my-4">
+            <div class="card-header">Details</div>
+            <div class="card-body">
+                {% for question in form.question_set.all %}
+                    <p class="font-weight-bold"><u>QUESTION {{ forloop.counter }} :</u> {{ question.text }}</p>
+                    {% if question.type == 'UNIQUE_ANSWER' or question.type == 'MULTIPLE_ANSWER' %}
+                        <table class="table table-sm">
+                            <thead class="thead-light">
+                            <tr>
+                                <th scope="col">Anonymous user</th>
+                                {% for possible_answer in question.possibleanswer_set.all %}
+                                    <th>{{ possible_answer.text }}</th>
+                                {% endfor %}
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for anonymous_user in question.get_anonymous_users.all %}
+                                <tr>
+                                    <th scope="row">{{ anonymous_user.uuid }}</th>
+                                    {% for possible_answer in question.possibleanswer_set.all %}
+                                        <td>
+                                            {% if possible_answer in anonymous_user.get_chosen_possible_answers %}
+                                                X
+                                            {% endif %}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                            <tr>
+                                <th scope="row">Total</th>
+                                {% for possible_answer in question.possibleanswer_set.all %}
+                                    <td class="font-weight-bold">{{ possible_answer.answer_set.all.count }}</td>
+                                {% endfor %}
+                            </tr>
+                            </tbody>
+                        </table>
+                    {% elif question.type == 'TEXT' or question.type == 'HTML' or question.type == 'FILE' %}
+                        <div class="mb-4">
+                            {% for anonymous_user in question.get_anonymous_users.all %}
+                                <span class="font-weight-bold">{{ anonymous_user.uuid }}</span>
+                                {% for answer in anonymous_user.answer_set.all %}
+                                    {% if answer.question == question %}
+                                        {% if answer.file %}
+                                            <div><a href="{{ protocol }}://{{ request.get_host }}{{ answer.file.url }}">
+                                                {{ protocol }}://{{ request.get_host }}{{ answer.file.url }}</a></div>
+                                        {% elif answer.isHtml %}
+                                            {% autoescape off %}
+                                                <div class="mb-2 border">{{ answer.text }}</div>
+                                            {% endautoescape %}
+                                        {% else %}
+                                            <div class="mb-2 border">{{ answer.text }}</div>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

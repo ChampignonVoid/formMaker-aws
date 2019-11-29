@@ -1,0 +1,16 @@
+{% block subject %}
+    Validate your email on Form Maker
+{% endblock %}
+
+{% block html %}
+    <html>
+    <body>
+    <p>Hi {{ user.username }},</p>
+
+    <p>Your requested an email to validate your email address on Form Maker.</p>
+
+    <p>To confirm your email, please follow this link :</p>
+    <a href="{{ url }}">{{ url }}</a>
+    </body>
+    </html>
+{% endblock %}

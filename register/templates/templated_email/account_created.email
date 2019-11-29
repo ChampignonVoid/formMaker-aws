@@ -1,0 +1,16 @@
+{% block subject %}
+    Account created on Form Maker
+{% endblock %}
+
+{% block html %}
+    <html>
+    <body>
+    <p>Hi {{ user.username }},</p>
+
+    <p>Your account has been created on Form Maker.</p>
+
+    <p>To confirm your email, please follow this link :</p>
+    <a href="{{ url }}">{{ url }}</a>
+    </body>
+    </html>
+{% endblock %}

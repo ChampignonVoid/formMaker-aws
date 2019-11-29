@@ -1,0 +1,50 @@
+image: python:latest
+
+# This folder is cached between builds
+# http://docs.gitlab.com/ce/ci/yaml/README.html#cache
+cache:
+  paths:
+  - ~/.cache/pip/
+
+before_script:
+  - python -V # Print out python version for debugging
+  - pip install -r requirements.txt
+
+# To get Django tests to work you may need to create a settings file using
+# the following DATABASES:
+# 
+# DATABASES = {
+#     'default': {
+#        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+#        'NAME': 'ci',
+#        'USER': 'postgres',
+#        'PASSWORD': 'postgres',
+#        'HOST': 'postgres',
+#        'PORT': '5432',
+#    },
+# }
+#
+# and then adding `--settings app.settings.ci` (or similar) to the test command
+
+tests-backend:
+  script:
+  - echo "Codding style checking:"
+  - flake8 ./
+  - echo "Executing testsuite:"
+  - coverage erase
+  - coverage run --source='.' manage.py test
+  - echo "Code coverage :"
+  - coverage report -m --omit "*/migrations/*","formMaker/wsgi.py" --fail-under=60
+
+
+tests-frontend:
+  script:
+    - apt-get update
+    - apt-get install -y curl
+    - curl -sL https://deb.nodesource.com/setup_10.x | bash - # npm and nodejs PPA
+    - apt-get install nodejs # contains nodejs and npm
+    - cd frontend
+    - npm install jest
+    - npm run test
+    - cd ..
+

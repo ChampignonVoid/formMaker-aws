@@ -1,0 +1,10 @@
+version: '2.1'
+
+services:
+  formmaker:
+    image: formmaker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000

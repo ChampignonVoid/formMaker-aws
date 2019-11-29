@@ -1,0 +1,23 @@
+{% extends 'main/base.html' %}
+
+{% block content %}
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+    <form method="POST" action="">
+        {% csrf_token %}
+        <table>
+            <tr>
+                <td>
+                    <label for="token">
+                        Token
+                    </label>
+                </td>
+                <td>
+                    <input type="text" id="token" name="token" required/>
+                </td>
+            </tr>
+        </table>
+        <input type="submit"/>
+    </form>
+{% endblock %}

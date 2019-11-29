@@ -1,0 +1,160 @@
+// bootstrap_custom.scss --> main/static/main/css/bootstrap.css
+
+$main-color: #7eb5ff;
+
+$theme-colors: (
+        "primary": $main-color,
+        "secondary": $main-color,
+        "danger": #ff6664,
+        "success": #cbefd3
+);
+
+@import "bootstrap/bootstrap.scss";
+
+$text-color-secondary: darken(theme-color("primary"), 0%);
+$bg-color-light: lighten(theme-color("primary"), 30%);
+$bg-color-light: lighten(theme-color("primary"), 15%);
+$bg-color-contrast: darken(theme-color("primary"), 2%);
+$border-color: lighten($bg-color-light, 0%);
+$success-text: #289f4f;
+
+h1, h2, h3, h4, h5, h6, p, label, small, b, em, .text-muted, .table {
+  color: #464c54;
+}
+
+input {
+  border: 1px solid $border-color;
+  border-radius: 4px;
+  padding: 5px;
+  color: #464c54;
+}
+
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 20px;
+  border-color: $border-color !important;
+}
+
+a {
+  color: $text-color-secondary;
+}
+
+hr {
+  background-color: $bg-color-light;
+}
+
+.btn {
+  border-radius: 4px;
+  color: $white;
+}
+
+.btn-primary {
+  background-color: #50cc9c;
+  border-color: #50cc9c;
+}
+
+.navbar {
+  background-color: theme-color("primary") !important;
+  padding-left: 12.5%;
+  padding-right: 12.5%;
+}
+
+.breadcrumb {
+  background-color: $white !important;
+  border-radius: 0;
+  padding-left: 12.5%;
+  padding-right: 12.5%;
+}
+
+.breadcrumb-item {
+  a {
+    color: #464c54;
+
+    &:hover {
+      text-decoration: none;
+    }
+  }
+}
+
+.breadcrumb-item.active {
+  color: #464c54;
+  cursor: default;
+}
+
+.breadcrumb-item::before {
+  color: #464c54 !important;
+}
+
+.jumbotron {
+  background-color: $white;
+
+  a {
+    &:hover {
+      text-decoration: none;
+    }
+  }
+
+  i {
+    color: #d2ddf3;
+  }
+}
+
+.card {
+  border-color: $border-color;
+}
+
+.list-group-item {
+  border-color: $border-color;
+}
+
+.card-header {
+  background-color: $bg-color-light;
+  border-color: $border-color;
+  color: white !important;
+}
+
+.card-header .close {
+  color: $bg-color-contrast;
+}
+
+.table {
+  .close {
+    color: theme-color("primary");
+  }
+
+  th, td {
+    border-color: $border-color;
+    border-bottom: none !important;
+  }
+
+  thead th {
+    border-color: $border-color;
+  }
+
+  .thead-light th {
+    color: $white !important;
+  }
+}
+
+.thead-light th {
+  background-color: $bg-color-light !important;
+}
+
+.alert-success {
+  background-color: theme-color("success");
+  color: $success-text;
+
+  a {
+    color: $success-text;
+
+    &:hover {
+      color: $success-text;
+    }
+  }
+}
+
+.max-width-9 {
+  max-width: 900px;
+}

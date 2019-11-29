@@ -1,0 +1,239 @@
+{% extends 'main/form_base.html' %}
+
+{% block content %}
+    <div class="w-75 mx-auto my-5" id="wrapper">
+        {% for question in form.get_sorted_question_set.all %}
+            <div class="card m-5" id="question-{{ question.id }}">
+                <div class="card-header"></div>
+                <div class="card-body">
+                    <p>{{ question.text }}</p>
+                    {% if question.type == 'UNIQUE_ANSWER' %}
+                        {% for possible_answer in question.get_sorted_possible_answer_set.all %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radio-{{ question.id }}"
+                                       id="{{ possible_answer.id }}"/>
+                                <label class="form-check-label"
+                                       for="{{ possible_answer.id }}">{{ possible_answer.text }}</label>
+                            </div>
+                        {% endfor %}
+                    {% elif question.type == 'MULTIPLE_ANSWER' %}
+                        {% for possible_answer in question.get_sorted_possible_answer_set.all %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="checkbox-{{ question.id }}"
+                                       id="{{ possible_answer.id }}"/>
+                                <label class="form-check-label"
+                                       for="{{ possible_answer.id }}">{{ possible_answer.text }}</label>
+                            </div>
+                        {% endfor %}
+                    {% elif question.type == 'TEXT' %}
+                        <textarea></textarea>
+                    {% elif question.type == 'HTML' %}
+                        <textarea class="html-wysiwyg"></textarea>
+                    {% elif question.type == 'FILE' %}
+                        <input type="file"/>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+        <div class="text-center">
+            <button type="button" class="btn btn-primary" id="validate-button" onclick="validate()">Validate</button>
+        </div>
+    </div>
+
+    <template id="error-message-template">
+        <div class="alert alert-danger my-4" role="alert" id="error-message">
+        </div>
+    </template>
+
+    <template id="success-message-template">
+        <div class="alert alert-success my-4 text-center" role="alert" id="error-message">
+            Your answers have been submitted.
+        </div>
+    </template>
+
+    <script>
+        let csrf_token = "{{ csrf_token }}";
+        let all_ajax_sent = false;
+        let ajax_sent_count = 0;
+        let ajax_count = 0;
+
+        function has_answers() {
+            return true;
+        }
+
+        function remove_error_message() {
+            let error_message_node = document.querySelector('#error-message');
+            if (error_message_node !== null) {
+                error_message_node.parentNode.removeChild(error_message_node);
+            }
+        }
+
+        function handle_error(event) {
+            all_ajax_sent = false;
+            ajax_sent_count = 0;
+            ajax_count = 0;
+            const error_message_template = document.querySelector('#error-message-template');
+            if (document.querySelector('#error-message') === null) {
+                let error_message_clone = error_message_template.content.cloneNode(true);
+                error_message_clone.children[0].innerText = 'An error has occurred: ' + event.responseText;
+                document.querySelector('#wrapper').appendChild(error_message_clone);
+            }
+            document.querySelector('#validate-button').removeAttribute('disabled');
+        }
+
+        function end() {
+            ajax_sent_count = ajax_sent_count + 1;
+            if (all_ajax_sent && ajax_sent_count === ajax_count) {
+                const success_message_template = document.querySelector('#success-message-template');
+                if (document.querySelector('#success-message') === null) {
+                    let success_message_clone = success_message_template.content.cloneNode(true);
+                    document.querySelector('#wrapper').appendChild(success_message_clone);
+                    window.scrollTo(0, document.body.scrollHeight);
+                }
+            }
+        }
+
+        function validate() {
+            remove_error_message();
+            if (!has_answers()) {
+                return;
+            }
+            document.querySelector('#validate-button').setAttribute('disabled', 'true');
+
+            $.ajax({
+                url: '/anonymous_users/',
+                method: 'POST',
+                headers: {"Content-Type": "application/json", "X-CSRFToken": csrf_token},
+                success: function (response) {
+                    end();
+                    const author_hash = response.uuid;
+                    create_answers(author_hash);
+                    if (ajax_count === 1) {
+                        handle_error({responseText:"You need to answer at least one question to submit the form."});
+                    }
+                },
+                error: handle_error
+            });
+            ajax_count = ajax_count + 1;
+        }
+
+        function create_answers(author_hash) {
+            let chosenAnswer = '';
+            {% for question in form.question_set.all %}
+                {% if question.type == 'UNIQUE_ANSWER' %}
+                    document.querySelectorAll(
+                        'div[id=question-{{ question.id }}] input[name^=radio-]'
+                    ).forEach(input => input.checked ? chosenAnswer = input.id : null);
+
+                    if (chosenAnswer !== '') {
+                        $.ajax({
+                            url: '/answers/',
+                            method: 'POST',
+                            data: JSON.stringify({
+                                question: {{ question.id }},
+                                chosenAnswer: chosenAnswer,
+                                author: author_hash
+                            }),
+                            headers: {"Content-Type": "application/json", "X-CSRFToken": csrf_token},
+                            error: handle_error,
+                            success: end
+                        });
+                        ajax_count = ajax_count + 1;
+                    }
+                {% elif question.type == 'MULTIPLE_ANSWER' %}
+                    document.querySelectorAll(
+                        'div[id=question-{{ question.id }}] input[name^=checkbox-]'
+                    ).forEach(
+                        input => (
+                            input.checked ?
+                                function () {
+                                    $.ajax({
+                                        url: '/answers/',
+                                        method: 'POST',
+                                        data: JSON.stringify({
+                                            question: {{ question.id }},
+                                            chosenAnswer: input.id,
+                                            author: author_hash
+                                        }),
+                                        headers: {"Content-Type": "application/json", "X-CSRFToken": csrf_token},
+                                        error: handle_error,
+                                        success: end
+                                    });
+                                    ajax_count = ajax_count + 1;
+                                }()
+                                : null
+                        )
+                    );
+                {% elif question.type == 'TEXT' %}
+                    const text = document.querySelectorAll(
+                        'div[id=question-{{ question.id }}] textarea'
+                    )[0].value.trim();
+                    if (text !== '') {
+                        $.ajax({
+                            url: '/answers/',
+                            method: 'POST',
+                            data: JSON.stringify({
+                                question: {{ question.id }},
+                                text: text,
+                                author: author_hash
+                            }),
+                            headers: {"Content-Type": "application/json", "X-CSRFToken": csrf_token},
+                            error: handle_error,
+                            success: end
+                        });
+                        ajax_count = ajax_count + 1;
+                    }
+                {% elif question.type == 'HTML' %}
+                    const html = document.querySelectorAll(
+                        'div[id=question-{{ question.id }}] div[role=application] div[contenteditable=true] p'
+                    )[0].innerHTML;
+                    if (html !== '<br>') { // empty WYSIWYG
+                        $.ajax({
+                            url: '/answers/',
+                            method: 'POST',
+                            data: JSON.stringify({
+                                question: {{ question.id }},
+                                text: html,
+                                isHtml: true,
+                                author: author_hash
+                            }),
+                            headers: {"Content-Type": "application/json", "X-CSRFToken": csrf_token},
+                            error: handle_error,
+                            success: end
+                        });
+                        ajax_count = ajax_count + 1;
+                    }
+                {% elif question.type == 'FILE' %}
+                    const file = document.querySelectorAll(
+                        'div[id=question-{{ question.id }}] input[type=file]'
+                    )[0].files[0];
+                    if (file) {
+                        let formData = new FormData();
+                        formData.append('question', {{ question.id }});
+                        formData.append('file', file);
+                        formData.append('upload_file', true);
+                        formData.append('author', author_hash);
+
+                        $.ajax({
+                            url: '/answers/',
+                            method: 'POST',
+                            data: formData,
+                            cache: false,
+                            contentType: false,
+                            processData: false,
+                            headers: {"X-CSRFToken": csrf_token},
+                            timeout: 60000,
+                            error: handle_error,
+                            success: end
+                        });
+                        ajax_count = ajax_count + 1;
+                    }
+                {% endif %}
+                {% autoescape off %}
+
+                {% endautoescape %}
+            {% endfor %}
+            all_ajax_sent = true;
+        }
+    </script>
+{% endblock %}
